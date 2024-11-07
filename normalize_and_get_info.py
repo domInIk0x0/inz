@@ -6,6 +6,7 @@ from tqdm import tqdm
 import torchstain
 from skimage.metrics import structural_similarity as ssim
 
+
 def calculate_ssim(imageA, imageB):
     '''
     OPIS: 
@@ -23,6 +24,7 @@ def calculate_ssim(imageA, imageB):
     grayB = cv2.cvtColor(imageB, cv2.COLOR_RGB2GRAY)
     score, _ = ssim(grayA, grayB, full=True)
     return score
+
 
 def check_single_tile(tile, threshold=0.8):
     '''
@@ -80,7 +82,8 @@ def check_h_e(tile):
 def process_tiles(input_path, output_path, reference_path, info_output_path):
     '''
     OPIS: 
-
+    Funkcja normalizuje wszystkie kafelki metoda macenko a nastepnie oblicza takie rzeczy jak
+    procent tla, SSIM, H&E itd aby w późniejszym etapie zachować tylko reprezentatywne kafelki.
     
     PARAMETRY:
     input_path:  sciezka do folderu gdzia znajduja sie pociete kafelki przez funkcje crop_all_images
@@ -91,7 +94,6 @@ def process_tiles(input_path, output_path, reference_path, info_output_path):
     ZWRACA:
     Funkcja zapisuje znormalizowane kafelki do podanego folderu i dodatkowo zapisuje tablice z roznymi informacjami
     '''
-    
     
     with open(reference_path, 'rb') as file:
         data = pickle.load(file)
