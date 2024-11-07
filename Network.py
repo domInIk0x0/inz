@@ -11,29 +11,27 @@ import numpy as np
 import os
 
 
-class Bottleneck(nn.Module):
-    expansion = 4
+class Block(nn.Module):
     def __init__(self, in_channels, out_channels, i_downsample=None, stride=1):
-        super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
+        super(Block, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, stride=stride, bias=False)
         self.batch_norm1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
         self.batch_norm2 = nn.BatchNorm2d(out_channels)
-        self.conv3 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=1, stride=1, padding=0)
-        self.batch_norm3 = nn.BatchNorm2d(out_channels*self.expansion)
+
         self.i_downsample = i_downsample
         self.relu = nn.ReLU()
 
     def forward(self, x):
         identity = x.clone()
         x = self.relu(self.batch_norm1(self.conv1(x)))
-        x = self.relu(self.batch_norm2(self.conv2(x)))
-        x = self.batch_norm3(self.conv3(x))
+        x = self.batch_norm2(self.conv2(x))
         if self.i_downsample is not None:
             identity = self.i_downsample(identity)
         x += identity
         return self.relu(x)
 
+    
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=4, channels=1):
         super(ResNet, self).__init__()
@@ -62,20 +60,20 @@ class ResNet(nn.Module):
 
     def _make_layer(self, block, blocks, out_channels, stride=1):
         downsample = None
-        if stride != 1 or self.in_channels != out_channels * block.expansion:
+        if stride != 1 or self.in_channels != out_channels:
             downsample = nn.Sequential(
-                nn.Conv2d(self.in_channels, out_channels * block.expansion, kernel_size=1, stride=stride),
-                nn.BatchNorm2d(out_channels * block.expansion)
+                nn.Conv2d(self.in_channels, out_channels, kernel_size=1, stride=stride),
+                nn.BatchNorm2d(out_channels)
             )
         layers = [block(self.in_channels, out_channels, downsample, stride)]
-        self.in_channels = out_channels * block.expansion
+        self.in_channels = out_channels
         for _ in range(1, blocks):
             layers.append(block(self.in_channels, out_channels))
         return nn.Sequential(*layers)
 
     
 def ResNet18(num_classes=4, channels=1):
-    return ResNet(Bottleneck, [2, 2, 2, 2], num_classes=num_classes, channels=channels)
+    return ResNet(Block, [2, 2, 2, 2], num_classes=num_classes, channels=channels)
 
 
 class GleasonTilesLoader(Dataset):
@@ -92,8 +90,10 @@ class GleasonTilesLoader(Dataset):
     def __getitem__(self, idx):
         with open(self.files[idx], 'rb') as f:
             data = pickle.load(f)
+            
         patch = Image.fromarray(data['patch'])
         gleason_score = torch.tensor(self.label_map[data['gleason'][0]], dtype=torch.long)
+        
         if self.transform:
             patch = self.transform(patch)
         return patch, gleason_score
@@ -116,6 +116,7 @@ def evaluate_model(model, test_loader, device):
             _, predicted = torch.max(outputs, 1)
             y_true.extend(gleason_score.cpu().numpy())
             y_pred.extend(predicted.cpu().numpy())
+    
     # Obliczanie metryk
     cm = confusion_matrix(y_true, y_pred)
     accuracy = accuracy_score(y_true, y_pred)
@@ -169,6 +170,7 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.5], std=[0.5]),
 ])
 
+
 # Przygotowanie zbiorów danych
 dataset = GleasonTilesLoader('/mnt/ip105/dpietrzak/panda/clear_paths.pkl', transform=transform)
 train_dataset, val_dataset, test_dataset = split_data(dataset)
@@ -177,15 +179,11 @@ train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_worker
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=8)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=8)
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = ResNet18(num_classes=4, channels=1)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-
 train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, device)
-
-
 evaluate_model(model, test_loader, device)
