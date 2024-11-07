@@ -26,6 +26,7 @@ def calculate_ssim(imageA, imageB):
     score, _ = ssim(grayA, grayB, full=True)
     return score
 
+
 def check_single_tile(tile, threshold=0.8):
     '''
     OPIS: 
@@ -78,7 +79,6 @@ def check_h_e(tile):
     return hematoxylin_percentage, eosin_percentage
 
 
-
 def process_tiles(input_path, output_path, reference_path, info_output_path):
     '''
     OPIS: 
@@ -93,7 +93,6 @@ def process_tiles(input_path, output_path, reference_path, info_output_path):
     ZWRACA:
     Funkcja zapisuje znormalizowane kafelki do podanego folderu i dodatkowo zapisuje tablice z roznymi informacjami
     '''
-    
     
     with open(reference_path, 'rb') as file:
         data = pickle.load(file)
