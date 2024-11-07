@@ -5,6 +5,7 @@ import cv2
 from tqdm import tqdm
 import torchstain
 from skimage.metrics import structural_similarity as ssim
+import shutil
 
 
 def calculate_ssim(imageA, imageB):
@@ -24,7 +25,6 @@ def calculate_ssim(imageA, imageB):
     grayB = cv2.cvtColor(imageB, cv2.COLOR_RGB2GRAY)
     score, _ = ssim(grayA, grayB, full=True)
     return score
-
 
 def check_single_tile(tile, threshold=0.8):
     '''
@@ -82,8 +82,7 @@ def check_h_e(tile):
 def process_tiles(input_path, output_path, reference_path, info_output_path):
     '''
     OPIS: 
-    Funkcja normalizuje wszystkie kafelki metoda macenko a nastepnie oblicza takie rzeczy jak
-    procent tla, SSIM, H&E itd aby w późniejszym etapie zachować tylko reprezentatywne kafelki.
+
     
     PARAMETRY:
     input_path:  sciezka do folderu gdzia znajduja sie pociete kafelki przez funkcje crop_all_images
@@ -94,6 +93,7 @@ def process_tiles(input_path, output_path, reference_path, info_output_path):
     ZWRACA:
     Funkcja zapisuje znormalizowane kafelki do podanego folderu i dodatkowo zapisuje tablice z roznymi informacjami
     '''
+    
     
     with open(reference_path, 'rb') as file:
         data = pickle.load(file)
@@ -161,24 +161,69 @@ def process_tiles(input_path, output_path, reference_path, info_output_path):
 
     print("Processing complete.")
 
+    
+def select_representative_tiles(tiles_info_path, clear_ids):
+    '''
+    OPIS:
+    
+    PARAMETRY:
+    tiles_info_path: sciezka gdzie znajduje sie tablica z informacjami na temat procentu tła itd.
+    clear_ids: sciezka gdzie zostanie zapisana tablica ze sciezkami do treningu
+    
+    ZWRACA:
+    Sciezki do zdjec które zostana uzyte do treningu
+    '''
+    with open(info_path, 'rb') as f:
+        data = pickle.load(f)
+        
+    info = pd.DataFrame(data)
+    
+    # Dodanie kolumny zeby wiedziec o numerze kafelka
+    info['path_to_tile'] = info.index.to_series().apply(lambda x: f'/mnt/data/dpietrzak/panda/normalized_tiles/normalized_tile_{x}.pkl')
+    info = info[(info['is_normalized'] == True) & (info['background_percent'] <= 0.2)]
+    info['H&E_sum'] = info['H&E'].apply(lambda x: sum(x))
+    info = info[(info['H&E_sum'] >= 60)] 
+    info = info[(info['SSIM'] >= 0.9)] 
+    
+    clear_path = np.array(info.path_to_tile)
+
+    # Zapisanie sciezek do zdjec które zostaną użyte do treningu
+    with open(clear_ids, 'wb') as f:
+        pickle.dump(clear_path, f)
+
+        
+def copy_files_to_folder(file_paths, destination_folder):
+    '''
+    OPIS: Funkcja która przenosi zdjęcia które zostały 
+    wybrane do treningu z folderu ze wszystkimi znormalizowanymi kafelkami do osobnego folderu.
+    
+    PARAMETRY:
+    file_paths: sciezka do tablicy ze sciezkami z wybranymi zdjeciami do treningu
+    destination_folder: sciezka pod jaka maja zostac zapisane zdjecia treningowe
+    
+    ZWRACA:
+    
+    '''
+    os.makedirs(destination_folder, exist_ok=True)
+    with open(file_paths, 'rb') as f:
+        file_paths = pickle.load(f)
+
+    for file_path in file_paths:
+        if os.path.exists(file_path):
+            shutil.copy(file_path, destination_folder)
+            print(f"Copied {file_path} to {destination_folder}")
+        else:
+            print(f"File {file_path} does not exist and was skipped.")
+            
 
 input_path = '/mnt/ip105/dpietrzak/panda/tiles'
 output_path = '/mnt/ip105/dpietrzak/panda/normalized_tiles'
 reference_path = '/mnt/ip105/dpietrzak/panda/tiles/tile_159065.pkl'
 info_output_path = '/mnt/ip105/dpietrzak/panda/tiles_info.pkl'
+file_paths = '/mnt/ip105/dpietrzak/panda/clear_paths.pkl'
+destination_folder = '/mnt/ip105/dpietrzak/panda/clear_tiles'
 
 process_tiles(input_path, output_path, reference_path, info_output_path)
+select_representative_tiles(info_output_path, file_paths)
+copy_files_to_folder(file_paths, destination_folder)
 
-
-with open(info_output_path, 'rb') as f:
-    data = pickle.load(f)
-
-info = pd.DataFrame(data)
-
-# Dodanie kolumny zeby wiedziec o numerze kafelka
-info['path_to_tile'] = info.index.to_series().apply(lambda x: f'/mnt/data/dpietrzak/panda/normalized_tiles/normalized_tile_{x}.pkl')
-
-info = info[(info['is_normalized'] == True) & (info['background_percent'] <= 0.2)]
-info['H&E_sum'] = info['H&E'].apply(lambda x: sum(x))
-info = info[(info['H&E_sum'] >= 60)] 
-info = info[(info['SSIM'] >= 0.9)] 
