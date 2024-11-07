@@ -6,7 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 import cv2
 
-# Funkcja filtrująca obrazy na podstawie dostępnych masek i wybranych wartości Gleasona (nie każdy obraz posiada maskę ale jest ich bardzo mało)
+
 def clear_image_ids(labels_path, mask_path, gleason, info=False):
     '''
     Przyjmowane parametry:
@@ -16,6 +16,7 @@ def clear_image_ids(labels_path, mask_path, gleason, info=False):
     info: wyswietla informacje o ilosci id 
     Zwraca:
     Zwracana jest tablica z id zdjęć które posiadają swoje maski i mają podany gleason
+    (nie każdy obraz posiada maskę ale jest to bardzo mała ilość)
     '''
     
     train_df = pd.read_csv(labels_path)
@@ -33,15 +34,15 @@ def clear_image_ids(labels_path, mask_path, gleason, info=False):
 
 
 # Funkcja główna
-def check_zero_pixels(path_train, path_train_mask, labels_path, patch_size, gleason_val):
+def process_tiles(path_train, path_train_mask, labels_path, patch_size, n_tiles, gleason_val):
     '''
     Przyjmowane parametry:
-    labels_path: sciezka do pliku csv w ktorym sa etykiety itp
-    mask_path: sciezka gdzie znajduja sie maski do zdjec
-    gleason: tablica w której są etykiety gleason i tylko zdjęcia z takim gleason zostaną przetworzone
-    info: wyswietla informacje o ilosci id 
-    Zwraca:
-    Zwracana jest tablica z id zdjęć które posiadają swoje maski i mają podany gleason
+    path_train: sciezka do pliku ze zdjeciami do treningu
+    path_train_mask: sciezka gdzie znajduja sie maski do zdjec
+    labels_path: sciezka do pliku csv z etykietami
+    patch_size: rozmiar zdjecia jakie ma zostac wycięte
+    n_tiles: ile kafelków ma zostać wyciętych ze zdjęcia
+    gleason_val: tablica z gleason która zostanie przekazana do funkcji clear_image_ids
     '''
     
     ids_list = clear_image_ids(labels_path=labels_path, mask_path=path_train_mask, gleason=gleason_val, info=True)
@@ -80,15 +81,16 @@ def check_zero_pixels(path_train, path_train_mask, labels_path, patch_size, glea
                 if count_zero == 0:
                     patches.append((patch, sum_mask_values))
 
-        # Sortowanie i wybieranie najlepszych kafelków
-        patches = sorted(patches, key=lambda x: x[1], reverse=True)[:25]
+        # Sortowanie i wybieranie okreslonej ilosci kafli
+        patches = sorted(patches, key=lambda x: x[1], reverse=True)[:n_tiles]
 
         # Przetwarzanie wybranych kafelków
         for patch, sum_mask_values in patches:
             data = df_lookup[image_id]
             provider = data['data_provider']
             gleason_score = data['gleason_score']
-            
+
+            # Radboud okresla 0+0 jako negative
             if gleason_score == 'negative':
                 gleason_score = '0+0'
             
@@ -112,7 +114,7 @@ train_path = '/mnt/ip105/dpietrzak/train_images/'
 mask_path = '/mnt/ip105/dpietrzak/train_label_masks/'
 labels_path = '/mnt/ip105/dpietrzak/train.csv'
 
-check_zero_pixels(
+process_tiles(
     path_train=train_path,
     path_train_mask=mask_path,
     labels_path=labels_path,
