@@ -143,7 +143,6 @@ def process_tiles(input_path, output_path, reference_path, info_output_path):
 
             prc = check_single_tile(normalized_tile)
             ssim_score = calculate_ssim(patch, normalized_tile)
-            pen_trace = detect_pen_percentage(patch)
             h, e = check_h_e(patch)
 
             tiles_info['image_id'].append(image_id)
