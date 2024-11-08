@@ -3,30 +3,7 @@ from tqdm import tqdm
 import numpy as np
 import tifffile
 import pickle
-
-def clear_image_ids(labels_path, mask_path, gleason, info=False):
-    '''
-    Przyjmowane parametry:
-    labels_path: sciezka do pliku csv w ktorym sa etykiety itp
-    mask_path: sciezka gdzie znajduja sie maski do zdjec
-    gleason: tablica w której są etykiety gleason i tylko zdjęcia z takim gleason zostaną przetworzone
-    info: wyswietla informacje o ilosci id 
-    Zwraca:
-    Zwracana jest tablica z id zdjęć które posiadają swoje maski i mają podany gleason
-    '''
-    
-    train_df = pd.read_csv(labels_path)
-    gleason_clear = train_df[train_df['gleason_score'].isin(gleason)]
-    clear_ids = np.array(gleason_clear['image_id'])
-    mask_ids = {path[:-10] for path in os.listdir(mask_path)}
-    clear_ids_filtered = [img_id for img_id in clear_ids if img_id in mask_ids]
-
-    if info:
-        print(f'Liczba zdjęć z danym gleason score {len(clear_ids)}')
-        print(f'Liczba masek segmentacyjnych {len(mask_ids)}')
-        print(f'Liczba zdjęć z danym gleason score, które posiadają swoje maski segmentacyjne: {len(clear_ids_filtered)}')
-
-    return clear_ids_filtered
+from crop_all_images import clear_image_ids
 
 
 def V(channel):
