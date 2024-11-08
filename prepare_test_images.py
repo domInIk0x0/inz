@@ -46,7 +46,7 @@ def resize_with_padding(image, target_size=(256, 256)):
 
 def prepare_test_set(path_test, labels_path, patch_size, gleason_val):
 
-    clear_ids_test = clear_image_ids(test_path=path_test, labels_path=labels_path, gleason=gleason_val, info=True)
+    ids_list = clear_ids_test(test_path=path_test, labels_path=labels_path, gleason=gleason_val, info=True)
     df = pd.read_csv(labels_path)
     df_lookup = df.set_index('image_id')[['data_provider', 'gleason_score']].to_dict(orient='index')
 
