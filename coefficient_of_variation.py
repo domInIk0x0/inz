@@ -2,7 +2,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 import tifffile
-
+import pickle
 
 def clear_image_ids(labels_path, mask_path, gleason, info=False):
     '''
