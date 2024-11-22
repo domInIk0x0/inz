@@ -134,7 +134,7 @@ def split_data(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
 
 
 def train_model_with_early_stopping(
-    model, train_loader, val_loader, criterion, optimizer, scheduler, device, path, num_epochs=50, patience=5
+    model, train_loader, val_loader, criterion, optimizer, scheduler, device, path, num_epochs=150, patience=5
 ):
     model.to(device)
     best_val_loss = float("inf")
