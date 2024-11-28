@@ -7,7 +7,7 @@ import pickle
 from PIL import Image
 import numpy as np
 from tqdm import tqdm
-
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 class Block(nn.Module):
@@ -100,10 +100,12 @@ class GleasonTilesLoader(Dataset):
         patch = Image.fromarray(data['patch'])
         gleason_score = int(data['gleason'][0])
         image_id = data['image_id']
+        provider = data['provider']
+        mask_sum = int(data['mask_sum'])
 
         if self.transform:
             patch = self.transform(patch)
-        return patch, gleason_score, image_id, file_path
+        return patch, gleason_score, image_id, file_path, provider, mask_sum
 
 
 
@@ -115,42 +117,53 @@ transform = transforms.Compose([
 
 
 dataset = GleasonTilesLoader('/mnt/ip105/dpietrzak/panda/clear_paths.pkl', transform=transform)
-data_loader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=4)
-
+data_loader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=8)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = ResNet18(num_classes=2, channels=1)
-model.load_state_dict(torch.load('/mnt/ip105/dpietrzak/panda/model/resnet18_hel_vs_cancer_ADAMW_2.pth', map_location=device))
+model = ResNet18(num_classes=4, channels=1)
+model.load_state_dict(torch.load('/mnt/ip105/dpietrzak/panda/model/resnet18_SGD_GRAY_2.pth', map_location=device))
 model.to(device)
 model.eval()
-print(len(data_loader))
 
 features_list = []
 labels_list = []
 image_ids_list = []
 paths_list = []
+provider_list = []
+mask_sum_list = []
 
-with torch.no_grad(): 
-    for patches, labels, image_ids, paths in tqdm(data_loader, desc="Extracting features"):
+scaler = torch.cuda.amp.GradScaler() if device.type == "cuda" else None
+
+with torch.no_grad():
+    for patches, labels, image_ids, paths, providers, mask_sums in tqdm(data_loader, desc="Extracting features"):
         patches = patches.to(device)
         labels = labels.to(device)
 
-        features = model.relu(model.layer4(model.layer3(model.layer2(model.layer1(model.maxpool(model.relu(model.batch_norm1(model.conv1(patches)))))))))
-        features = model.avgpool(features)
-        features = torch.flatten(features, 1).cpu().numpy() 
+        with torch.cuda.amp.autocast(enabled=(scaler is not None)):
+            features = model.relu(model.layer4(model.layer3(model.layer2(model.layer1(
+                model.maxpool(model.relu(model.batch_norm1(model.conv1(patches))))
+            )))))
+            features = model.avgpool(features).flatten(1)
 
         features_list.append(features)
-        labels_list.extend(labels.cpu().numpy())
-        image_ids_list.extend(image_ids)
+        labels_list.append(labels)
+        image_ids_list.extend(image_ids)  
         paths_list.extend(paths)
+        provider_list.extend(providers)
+        mask_sum_list.extend(mask_sums)
 
-features_array = np.concatenate(features_list, axis=0)
+    features_tensor = torch.cat(features_list, dim=0)
+    labels_tensor = torch.cat(labels_list, dim=0)
+
+features_array = features_tensor.cpu().numpy()
+labels_array = labels_tensor.cpu().numpy()
+
 df = pd.DataFrame(features_array)
-df['label'] = labels_list
+df['label'] = labels_array
 df['image_id'] = image_ids_list
 df['path'] = paths_list
+df['provider'] = provider_list
+df['mask_sum'] = mask_sum_list
 
-
-output_path = '/mnt/ip105/dpietrzak/panda/extracted_features.pkl'
+output_path = '/mnt/ip105/dpietrzak/panda/extracted_features_m.pkl'
 df.to_pickle(output_path)
-
