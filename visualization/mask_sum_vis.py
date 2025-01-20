@@ -1,3 +1,9 @@
+"""
+SKRYPT WIZUALIZUJĄCY HISTOGRAMY WARTOŚCI
+MASEK NA POCIĘTYCH FRAGMENTACH
+"""
+
+
 import matplotlib.pyplot as plt
 import pickle
 import pandas as pd
