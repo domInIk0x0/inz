@@ -1,3 +1,7 @@
+"""
+SKRYPT WIZUALIZUJĄCY JAKIE OBRAZY Z DANYM ID SĄ NAJCZĘŚCIEJ W PARZE Z DANYMI
+OBRAZAMI.
+"""
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -26,7 +30,6 @@ plt.xticks(rotation=90)
 plt.tight_layout()
 plt.show()
 
-# Znalezienie obrazów, które były najczęściej w maksymalnym i minimalnym dystansie
 most_frequent_max_image = max_distance_counts.idxmax()
 most_frequent_max_count = max_distance_counts.max()
 
