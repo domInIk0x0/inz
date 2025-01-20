@@ -1,3 +1,8 @@
+"""
+WIZUALIZACJA ZREDUKOWANEJ PRZESTRZENI CECH PRZY UZYCIU UMAP Z RÓŻNYMI KONFIGURACJAMI.
+"""
+
+
 import pickle
 import plotly.express as px
 
