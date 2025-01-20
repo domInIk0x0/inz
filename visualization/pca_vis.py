@@ -1,3 +1,9 @@
+"""
+SKRYPT WIZUALIZUJĄCY ZREDUKOWANĄ PRZESTRZEŃ CECH
+UZYSKANĄ Z SIECI BEZ OSTATNIEJ WARSTWY. PCA
+"""
+
+
 import pickle
 import pandas as pd
 import numpy as np
