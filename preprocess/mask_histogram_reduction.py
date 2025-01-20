@@ -1,3 +1,9 @@
+"""
+SKRYPT REDUKUJĄCY ILOŚĆ ZDJĘĆ NA PODSTAWIE 
+WARTOŚCI MASEK SEGMENTACYJNYCH NA PODSTAWIE USTALONYCH PROGÓW
+"""
+
+
 import pickle
 import os
 from tqdm import tqdm
