@@ -1,3 +1,8 @@
+"""
+HISTOGRAMY DLA PROCENTU TŁA, SSIM, H&E
+"""
+
+
 import pickle
 import matplotlib.pyplot as plt
 import pandas as pd
